@@ -36,6 +36,20 @@ const run = async () => {
       res.send(result.acknowledged);
     });
 
+    app.get("/books/:category", async (req, res) => {
+      const { category } = req.params;
+      const data = await booksCollection.find({ category }).toArray();
+      res.send(data);
+    });
+
+    
+
+    app.get("/books/details/:id", async (req, res) => {
+      const { id } = req.params;
+      const data = await booksCollection.findOne({ _id: new ObjectId(id) });
+      res.send(data);
+    });
+
     app.listen(port, () => {
       console.log(`Server is running at http://localhost:${port}`);
     });
