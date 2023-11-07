@@ -28,6 +28,20 @@ const run = async () => {
       res.send("Home route..............");
     });
 
+    app.delete("/returnbook/:email/:id", async (req, res) => {
+      const { email, id } = req.params;
+      let result = await booksCollection.updateOne(
+        { _id: new ObjectId(id) },
+        {
+          $inc: {
+            quantity: 1,
+          },
+        }
+      );
+      result = await borrowedBooksCollection.deleteOne({ id, email });
+      res.send({ message: result.acknowledged });
+    });
+
     app.post("/addbook", async (req, res) => {
       const data = req.body;
       console.log(data);
@@ -40,7 +54,11 @@ const run = async () => {
     app.post("/borrowed", async (req, res) => {
       const borrowData = req.body;
       const { email, id } = borrowData;
+
       borrowData.borrowedDate = new Date().toISOString().split("T")[0];
+      if (borrowData.borrowedDate >= borrowData.returnDate) {
+        return res.send({ message: `Can't select this return date` });
+      }
       let result = await borrowedBooksCollection.findOne({
         email,
         id,
@@ -81,15 +99,33 @@ const run = async () => {
     app.get("/borrowed/:email", async (req, res) => {
       const { email } = req.params;
 
-      console.log(email);
-
       const borrowedBookList = await borrowedBooksCollection
         .find({ email })
         .toArray();
 
-      console.log(borrowedBookList);
-
       res.send(borrowedBookList);
+    });
+
+    app.get("/borrowed/books/:email", async (req, res) => {
+      const { email } = req.params;
+      console.log(email);
+      let result;
+      try {
+        result = await borrowedBooksCollection.find({ email }).toArray();
+      } catch (error) {
+        console.log(error.message);
+      }
+
+      const borrowBookListPromise = result.map(async (item) => {
+        const abc = await booksCollection.findOne({
+          _id: new ObjectId(item.id),
+        });
+        return abc;
+      });
+
+      const books = await Promise.all(borrowBookListPromise);
+
+      res.send(books);
     });
 
     app.get("/book/:id", async (req, res) => {
@@ -113,6 +149,25 @@ const run = async () => {
       const { id } = req.params;
       const data = await booksCollection.findOne({ _id: new ObjectId(id) });
       res.send(data);
+    });
+
+    app.patch("/updatebook", async (req, res) => {
+      const data = req.body;
+      console.log(data);
+      const { id } = data;
+
+      const result = await booksCollection.updateOne(
+        {
+          _id: new ObjectId(id),
+        },
+        {
+          $set: {
+            ...data,
+          },
+        }
+      );
+
+      res.send(result.acknowledged);
     });
 
     app.listen(port, () => {
