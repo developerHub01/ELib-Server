@@ -27,14 +27,14 @@ const client = new MongoClient(uri, {
 });
 
 const verifyToken = (req, res, next) => {
-  // const token = req.cookies.token;
-  // console.log("token =============>> ", token);
-  // if (!token) return res.status(401).send({ message: "unexpected access" });
-  // jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
-  //   if (err) return res.status(401).send({ message: "unexpected access" });
-  //   req.user = decoded;
-  //   next();
-  // });
+  const token = req.cookies.token;
+  console.log("token =============>> ", token);
+  if (!token) return res.status(401).send({ message: "unexpected access" });
+  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+    if (err) return res.status(401).send({ message: "unexpected access" });
+    req.user = decoded;
+    next();
+  });
   next();
 };
 
