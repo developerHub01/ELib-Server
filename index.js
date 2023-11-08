@@ -2,12 +2,20 @@ const express = require("express");
 const app = express();
 require("dotenv").config();
 const cors = require("cors");
+const cookieParser = require("cookie-parser");
+const jwt = require("jsonwebtoken");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const port = 5000;
 const uri = process.env.DB;
 
-app.use(cors());
+app.use(
+  cors({
+    origin: ["http://localhost:5173"],
+    credentials: true,
+  })
+);
 app.use(express.json());
+app.use(cookieParser());
 
 const client = new MongoClient(uri, {
   serverApi: {
@@ -16,6 +24,17 @@ const client = new MongoClient(uri, {
     deprecationErrors: true,
   },
 });
+
+const verifyToken = (req, res, next) => {
+  const token = req.cookies.token;
+  console.log("token =============>> ", token);
+  if (!token) return res.status(401).send({ message: "unexpected access" });
+  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+    if (err) return res.status(401).send({ message: "unexpected access" });
+    req.user = decoded;
+    next();
+  });
+};
 
 const run = async () => {
   try {
@@ -26,6 +45,20 @@ const run = async () => {
 
     app.get("/", async (req, res) => {
       res.send("Home route..............");
+    });
+
+    app.post("/jwt", async (req, res) => {
+      const user = req.body;
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
+        expiresIn: "1h",
+      });
+
+      res.send({ success: true, token });
+    });
+    app.post("/jwt/logout", async (req, res) => {
+      const user = req.body;
+      console.log(user);
+      res.send({ success: true });
     });
 
     app.delete("/returnbook/:email/:id", async (req, res) => {
@@ -96,8 +129,11 @@ const run = async () => {
       return res.send({ message: result.acknowledged });
     });
 
-    app.get("/borrowed/:email", async (req, res) => {
+    app.get("/borrowed/:email", verifyToken, async (req, res) => {
       const { email } = req.params;
+
+      if (req.user.email != email)
+        return res.send({ message: "invalid credentials" });
 
       const borrowedBookList = await borrowedBooksCollection
         .find({ email })
@@ -108,7 +144,6 @@ const run = async () => {
 
     app.get("/borrowed/books/:email", async (req, res) => {
       const { email } = req.params;
-      console.log(email);
       let result;
       try {
         result = await borrowedBooksCollection.find({ email }).toArray();
@@ -153,7 +188,6 @@ const run = async () => {
 
     app.patch("/updatebook", async (req, res) => {
       const data = req.body;
-      console.log(data);
       const { id } = data;
 
       const result = await booksCollection.updateOne(
