@@ -8,13 +8,17 @@ const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const port = 5000;
 const uri = process.env.DB;
 
-app.use(cors());
-// app.use(
-//   cors({
-//     origin: ["http://localhost:5173"],
-//     credentials: true,
-//   })
-// );
+// app.use(cors());
+app.use(
+  cors({
+    origin: [
+      "http://localhost:5173",
+      "https://elib-16499.web.app",
+      "https://elib-16499.firebaseapp.com",
+    ],
+    credentials: true,
+  })
+);
 app.use(express.json());
 app.use(cookieParser());
 
@@ -28,7 +32,6 @@ const client = new MongoClient(uri, {
 
 const verifyToken = (req, res, next) => {
   const token = req.cookies.token;
-  console.log("token =============>> ", token);
   if (!token) return res.status(401).send({ message: "unexpected access" });
   jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
     if (err) return res.status(401).send({ message: "unexpected access" });
@@ -79,7 +82,11 @@ const run = async () => {
 
     app.post("/addbook", async (req, res) => {
       const data = req.body;
-      console.log(data);
+      const { quantity, rating } = data;
+
+      if (quantity < 0 || rating < 0 || rating > 5) {
+        return res.status(400).send({ message: "Invalid input" });
+      }
 
       const result = await booksCollection.insertOne(data);
 
@@ -192,7 +199,11 @@ const run = async () => {
 
     app.patch("/updatebook", async (req, res) => {
       const data = req.body;
-      const { id } = data;
+      const { id, quantity, rating } = data;
+
+      if (quantity < 0 || rating < 0 || rating > 5) {
+        return res.status(400).send({ message: "Invalid input" });
+      }
 
       const result = await booksCollection.updateOne(
         {
