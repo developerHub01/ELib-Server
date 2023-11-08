@@ -8,12 +8,13 @@ const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const port = 5000;
 const uri = process.env.DB;
 
-app.use(
-  cors({
-    origin: ["http://localhost:5173"],
-    credentials: true,
-  })
-);
+app.use(cors());
+// app.use(
+//   cors({
+//     origin: ["http://localhost:5173"],
+//     credentials: true,
+//   })
+// );
 app.use(express.json());
 app.use(cookieParser());
 
@@ -26,14 +27,15 @@ const client = new MongoClient(uri, {
 });
 
 const verifyToken = (req, res, next) => {
-  const token = req.cookies.token;
-  console.log("token =============>> ", token);
-  if (!token) return res.status(401).send({ message: "unexpected access" });
-  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
-    if (err) return res.status(401).send({ message: "unexpected access" });
-    req.user = decoded;
-    next();
-  });
+  // const token = req.cookies.token;
+  // console.log("token =============>> ", token);
+  // if (!token) return res.status(401).send({ message: "unexpected access" });
+  // jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+  //   if (err) return res.status(401).send({ message: "unexpected access" });
+  //   req.user = decoded;
+  //   next();
+  // });
+  next();
 };
 
 const run = async () => {
@@ -142,14 +144,10 @@ const run = async () => {
       res.send(borrowedBookList);
     });
 
-    app.get("/borrowed/books/:email", async (req, res) => {
+    app.get("/borrowed/allbooks/:email", async (req, res) => {
       const { email } = req.params;
-      let result;
-      try {
-        result = await borrowedBooksCollection.find({ email }).toArray();
-      } catch (error) {
-        console.log(error.message);
-      }
+      console.log(email);
+      const result = await borrowedBooksCollection.find({ email }).toArray();
 
       const borrowBookListPromise = result.map(async (item) => {
         const abc = await booksCollection.findOne({
@@ -161,6 +159,12 @@ const run = async () => {
       const books = await Promise.all(borrowBookListPromise);
 
       res.send(books);
+    });
+    app.get("/borrowed/books/:email", async (req, res) => {
+      const { email } = req.params;
+      const result = await borrowedBooksCollection.find({ email }).toArray();
+
+      res.send(result);
     });
 
     app.get("/book/:id", async (req, res) => {
